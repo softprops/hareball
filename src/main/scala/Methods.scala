@@ -10,7 +10,7 @@ trait Methods { self: Requests =>
     def put(name: String) = request(base.PUT / name)_    
   }
 
-  def exchanges {
+  object exchanges {
     def base = api / "exchanges"
     def list = request(base)_
     def get(name: String) = request(base / name)_
