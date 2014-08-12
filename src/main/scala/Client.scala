@@ -24,7 +24,7 @@ abstract class Requests(
 
 case class Client(
   host: String, port: Int,
-  credentials: Credentials,
+  private val credentials: Credentials,
   private val http: Http = new Http)
  (implicit ec: ExecutionContext)
   extends Requests(credentials.sign(:/(host, port) / "api"), http)
