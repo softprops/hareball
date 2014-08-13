@@ -1,15 +1,20 @@
 package hareball
 
 import com.ning.http.client.{ AsyncHandler, Response }
-import dispatch.{ FunctionHandler, Http, Req, :/ }
+import dispatch.{ OkFunctionHandler, Http, Req, :/ }
 import scala.concurrent.{ Future, ExecutionContext }
 
 object Client {
   type Handler[T] = AsyncHandler[T]
-}
-
-case class Credentials(user: String, password: String) {
-  def sign(req: Req) = req.as_!(user, password)
+  abstract class Completion[T: Rep] {
+    def apply(): Future[T] =
+      apply(implicitly[Rep[T]].map)
+    def apply[T]
+      (f: Response => T): Future[T] =
+       apply(new OkFunctionHandler(f))
+    def apply[T]
+      (handler: Client.Handler[T]): Future[T]
+  }
 }
 
 abstract class Requests(
@@ -20,11 +25,20 @@ abstract class Requests(
     (req: Req)
     (handler: Client.Handler[T]): Future[T] =
      http(req > handler)
+  def complete[T: Rep]
+   (req: Req): Client.Completion[T] =
+    new Client.Completion[T] {
+      def apply[T](handler: Client.Handler[T]) =
+        request(req)(handler)
+    }
 }
 
 case class Client(
-  host: String, port: Int,
-  private val credentials: Credentials,
+  host: String = "localhost", port: Int = 55672,
+  private val credentials: Credentials = Credentials.None,
   private val http: Http = new Http)
  (implicit ec: ExecutionContext)
-  extends Requests(credentials.sign(:/(host, port) / "api"), http)
+  extends Requests(
+    credentials.sign(:/(host, port) / "api")
+    <:< Map("Content-Type" -> "application/json"), http
+  )
